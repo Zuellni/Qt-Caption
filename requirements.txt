@@ -2,4 +2,3 @@ pyqt6
 torch
 torchvision
 transformers
-unidecode

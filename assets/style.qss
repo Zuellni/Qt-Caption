@@ -51,7 +51,6 @@ QPushButton {
 }
 
 QPushButton:hover {
-	font-family: "Font Awesome 6 Pro Solid";
 	background: #556;
 	color: #EEF;
 }

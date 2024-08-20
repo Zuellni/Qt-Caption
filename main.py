@@ -16,7 +16,6 @@ class Model:
         self.path = config.get("model", "microsoft/Florence-2-large-ft")
         self.device = config.get("device", "cuda")
         self.dtype = config.get("dtype", "float16")
-        self.offload = config.get("offload", False)
 
         self.task = config.get("task", "<MORE_DETAILED_CAPTION>")
         self.max_new_tokens = config.get("max_new_tokens", 1024)
@@ -29,7 +28,6 @@ class Model:
         import torch
         from torchvision import io
         from transformers import AutoModelForCausalLM, AutoProcessor
-        from unidecode import unidecode
 
         image = io.read_image(path, io.ImageReadMode.RGB)
         dtype = getattr(torch, self.dtype)
@@ -50,8 +48,6 @@ class Model:
                 trust_remote_code=True,
             )
 
-        self.model.to(self.device)
-
         with torch.inference_mode():
             input = self.processor(text=self.task, images=image)
             input.to(self.device, dtype=dtype)
@@ -70,10 +66,6 @@ class Model:
                 skip_special_tokens=True,
             )
 
-        if self.offload:
-            self.model.cpu()
-
-        output = unidecode(output).strip()
         output = "\n".join([t for t in output.splitlines() if t])
         output = " ".join(output.split())
         output = output.rsplit(".", 1)[0] + "."
@@ -87,16 +79,15 @@ class Window(QWidget):
         self.model = model
         self.extensions = config.get(
             "extensions",
-            (".avif", ".bmp", ".jpeg", ".jpg", ".png", ".webp"),
+            (".bmp", ".jpeg", ".jpg", ".png", ".webp"),
         )
 
         self.folder = None
         self.files = None
         self.file = None
 
+        self.margin = 8
         self.index = 0
-        self.full = 8
-        self.half = 4
 
         self.setMinimumSize(640, 480)
         self.setWindowIcon(QIcon(icon))
@@ -149,11 +140,12 @@ class Window(QWidget):
 
         self.layout = QGridLayout()
         self.layout.setSpacing(0)
-        self.layout.setContentsMargins(self.half, self.half, self.half, self.half)
+        self.layout.setContentsMargins(*[self.margin // 2] * 4)
         self.layout.addWidget(self.title, 0, 0, 1, 2)
         self.layout.addWidget(self.image, 1, 0, 1, 1)
         self.layout.addWidget(self.text, 1, 1, 1, 1)
         self.layout.addLayout(self.button_layout, 2, 0, 1, 2)
+
         self.setLayout(self.layout)
         self.show()
 
@@ -200,8 +192,8 @@ class Window(QWidget):
 
             pixmap = QPixmap(self.file.as_posix())
             scaled = pixmap.scaled(
-                self.text.width() - self.full,
-                self.text.height() - self.full,
+                self.text.width() - self.margin,
+                self.text.height() - self.margin,
                 Qt.AspectRatioMode.KeepAspectRatio,
                 Qt.TransformationMode.SmoothTransformation,
             )
@@ -215,7 +207,7 @@ class Window(QWidget):
             )
             painter.setBrush(QBrush(scaled))
             painter.setPen(Qt.PenStyle.NoPen)
-            painter.drawRoundedRect(scaled.rect(), self.full, self.full)
+            painter.drawRoundedRect(scaled.rect(), self.margin, self.margin)
             painter.end()
 
             self.image.setPixmap(rounded)
@@ -229,7 +221,7 @@ class Window(QWidget):
 
     def resizeEvent(self, event):
         super().resizeEvent(event)
-        width = self.width() // 2 - self.half
+        width = self.width() // 2 - self.margin // 2
         self.image.setFixedWidth(width)
         self.text.setFixedWidth(width)
         self.show_image()
@@ -244,9 +236,13 @@ if __name__ == "__main__":
     parser.add_argument("--config", type=Path, default="config.json")
     args = parser.parse_args()
 
-    config = json.loads(args.config.read_text(encoding="utf-8"))
-    assets = Path(__file__).parent / "assets"
+    config = (
+        json.loads(args.config.read_text(encoding="utf-8"))
+        if args.config.is_file()
+        else {}
+    )
 
+    assets = Path(__file__).parent / "assets"
     style = (assets / "style.qss").read_text(encoding="utf-8")
     icon = (assets / "icon.png").as_posix()
 

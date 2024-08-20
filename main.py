@@ -2,9 +2,6 @@ import json
 import sys
 from argparse import ArgumentParser
 from pathlib import Path
-from warnings import simplefilter
-
-simplefilter("ignore")
 
 from PyQt6.QtCore import *
 from PyQt6.QtGui import *
@@ -15,28 +12,28 @@ class Model:
     def __init__(self, config: dict):
         self.path = config.get("model", "microsoft/Florence-2-large-ft")
         self.device = config.get("device", "cuda")
-        self.dtype_str = config.get("dtype", "float16")
+        self.dtype = config.get("dtype", "float16")
 
         self.task = config.get("task", "<MORE_DETAILED_CAPTION>")
         self.max_new_tokens = config.get("max_new_tokens", 1024)
         self.num_beams = config.get("num_beams", 3)
 
-        self.dtype = None
         self.model = None
         self.processor = None
 
-    def load(self):
+    def __call__(self, path: Path) -> str:
         import torch
+        from torchvision import io
         from transformers import AutoModelForCausalLM, AutoProcessor
 
-        if not self.dtype:
-            self.dtype = getattr(torch, self.dtype_str, "float16")
+        image = io.read_image(path, io.ImageReadMode.RGB)
+        dtype = getattr(torch, self.dtype, "float16")
 
         if not self.model:
             self.model = AutoModelForCausalLM.from_pretrained(
                 pretrained_model_name_or_path=self.path,
                 device_map=self.device,
-                torch_dtype=self.dtype,
+                torch_dtype=dtype,
                 trust_remote_code=True,
             ).eval()
 
@@ -44,18 +41,13 @@ class Model:
             self.processor = AutoProcessor.from_pretrained(
                 pretrained_model_name_or_path=self.path,
                 device_map=self.device,
-                torch_dtype=self.dtype,
+                torch_dtype=dtype,
                 trust_remote_code=True,
             )
 
-    def caption(self, path: Path) -> str:
-        import torch
-        from torchvision import io
-
         with torch.inference_mode():
-            image = io.read_image(path, io.ImageReadMode.RGB)
             input = self.processor(text=self.task, images=image)
-            input.to(self.device, dtype=self.dtype)
+            input.to(self.device, dtype=dtype)
 
             output_ids = self.model.generate(
                 input_ids=input["input_ids"],
@@ -76,9 +68,7 @@ class Model:
         return output.rsplit(".", 1)[0] + "."
 
 
-class Thread(QThread):
-    starting = pyqtSignal()
-    progress = pyqtSignal()
+class Worker(QThread):
     finished = pyqtSignal(str)
 
     def __init__(self, model: Model, path: Path):
@@ -87,11 +77,8 @@ class Thread(QThread):
         self.path = path
 
     def run(self):
-        self.starting.emit()
-        self.model.load()
-        self.progress.emit()
-        caption = self.model.caption(self.path)
-        self.finished.emit(caption)
+        output = self.model(self.path)
+        self.finished.emit(output)
 
 
 class Window(QWidget):
@@ -104,7 +91,12 @@ class Window(QWidget):
             (".bmp", ".jpeg", ".jpg", ".png", ".webp"),
         )
 
-        self.thread = None
+        self.timer = QTimer()
+        self.timer.timeout.connect(self.loading)
+        self.icons = ("hourglass-start", "hourglass-half", "hourglass-end")
+        self.icon_index = 0
+        self.worker = None
+
         self.folder = None
         self.files = None
         self.file = None
@@ -187,38 +179,36 @@ class Window(QWidget):
 
     def caption_image(self):
         if self.file:
-            self.thread = Thread(self.model, self.file)
-            self.thread.starting.connect(self.starting)
-            self.thread.progress.connect(self.progress)
-            self.thread.finished.connect(self.finished)
-            self.thread.start()
+            self.prev_button.setEnabled(False)
+            self.open_button.setEnabled(False)
+            self.capt_button.setEnabled(False)
+            self.save_button.setEnabled(False)
+            self.next_button.setEnabled(False)
 
-    @pyqtSlot()
-    def starting(self):
-        self.capt_button.setText("hourglass-start")
-        self.prev_button.setEnabled(False)
-        self.open_button.setEnabled(False)
-        self.capt_button.setEnabled(False)
-        self.save_button.setEnabled(False)
-        self.next_button.setEnabled(False)
-        self.text.setEnabled(False)
+            self.capt_button.setText("hourglass")
+            self.timer.start(500)
+            self.icon_index = 0
 
-    @pyqtSlot()
-    def progress(self):
-        self.capt_button.setText("hourglass-half")
+            self.worker = Worker(self.model, self.file)
+            self.worker.finished.connect(self.finished)
+            self.worker.start()
 
-    @pyqtSlot(str)
-    def finished(self, caption: str):
-        self.capt_button.setText("eye")
-        self.text.setText(caption)
-        self.save_caption()
+    def loading(self):
+        self.capt_button.setText(self.icons[self.icon_index])
+        self.icon_index = (self.icon_index + 1) % len(self.icons)
 
+    def finished(self, output: str):
         self.prev_button.setEnabled(True)
         self.open_button.setEnabled(True)
         self.capt_button.setEnabled(True)
         self.save_button.setEnabled(True)
         self.next_button.setEnabled(True)
-        self.text.setEnabled(True)
+
+        self.capt_button.setText("eye")
+        self.timer.stop()
+
+        self.text.setText(output)
+        self.save_caption()
 
     def save_caption(self):
         if self.file:

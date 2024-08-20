@@ -18,6 +18,7 @@ class Model:
         self.dtype = config.get("dtype", "float16")
         self.offload = config.get("offload", False)
 
+        self.task = config.get("task", "<MORE_DETAILED_CAPTION>")
         self.max_new_tokens = config.get("max_new_tokens", 1024)
         self.num_beams = config.get("num_beams", 3)
 
@@ -52,10 +53,8 @@ class Model:
         self.model.to(self.device)
 
         with torch.inference_mode():
-            input = self.processor(
-                text=self.config.get("task", "<MORE_DETAILED_CAPTION>"),
-                images=image,
-            ).to(self.device, dtype=dtype)
+            input = self.processor(text=self.task, images=image)
+            input.to(self.device, dtype=dtype)
 
             output_ids = self.model.generate(
                 input_ids=input["input_ids"],

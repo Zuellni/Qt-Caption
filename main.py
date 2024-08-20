@@ -15,28 +15,28 @@ class Model:
     def __init__(self, config: dict):
         self.path = config.get("model", "microsoft/Florence-2-large-ft")
         self.device = config.get("device", "cuda")
-        self.dtype = config.get("dtype", "float16")
+        self.dtype_str = config.get("dtype", "float16")
 
         self.task = config.get("task", "<MORE_DETAILED_CAPTION>")
         self.max_new_tokens = config.get("max_new_tokens", 1024)
         self.num_beams = config.get("num_beams", 3)
 
+        self.dtype = None
         self.model = None
         self.processor = None
 
-    def __call__(self, path: Path):
+    def load(self):
         import torch
-        from torchvision import io
         from transformers import AutoModelForCausalLM, AutoProcessor
 
-        image = io.read_image(path, io.ImageReadMode.RGB)
-        dtype = getattr(torch, self.dtype)
+        if not self.dtype:
+            self.dtype = getattr(torch, self.dtype_str)
 
         if not self.model:
             self.model = AutoModelForCausalLM.from_pretrained(
                 pretrained_model_name_or_path=self.path,
                 device_map=self.device,
-                torch_dtype=dtype,
+                torch_dtype=self.dtype,
                 trust_remote_code=True,
             ).eval()
 
@@ -44,13 +44,18 @@ class Model:
             self.processor = AutoProcessor.from_pretrained(
                 pretrained_model_name_or_path=self.path,
                 device_map=self.device,
-                torch_dtype=dtype,
+                torch_dtype=self.dtype,
                 trust_remote_code=True,
             )
 
+    def caption(self, path: Path) -> str:
+        import torch
+        from torchvision import io
+
         with torch.inference_mode():
+            image = io.read_image(path, io.ImageReadMode.RGB)
             input = self.processor(text=self.task, images=image)
-            input.to(self.device, dtype=dtype)
+            input.to(self.device, dtype=self.dtype)
 
             output_ids = self.model.generate(
                 input_ids=input["input_ids"],
@@ -68,8 +73,25 @@ class Model:
 
         output = "\n".join([t for t in output.splitlines() if t])
         output = " ".join(output.split())
-        output = output.rsplit(".", 1)[0] + "."
-        return output
+        return output.rsplit(".", 1)[0] + "."
+
+
+class Thread(QThread):
+    starting = pyqtSignal()
+    progress = pyqtSignal()
+    finished = pyqtSignal(str)
+
+    def __init__(self, model: Model, path: Path):
+        super().__init__()
+        self.model = model
+        self.path = path
+
+    def run(self):
+        self.starting.emit()
+        self.model.load()
+        self.progress.emit()
+        caption = self.model.caption(self.path)
+        self.finished.emit(caption)
 
 
 class Window(QWidget):
@@ -82,6 +104,7 @@ class Window(QWidget):
             (".bmp", ".jpeg", ".jpg", ".png", ".webp"),
         )
 
+        self.thread = None
         self.folder = None
         self.files = None
         self.file = None
@@ -96,7 +119,7 @@ class Window(QWidget):
         self.title = QLabel("(0/0)")
         self.image = QLabel()
         self.text = QTextEdit()
-        self.text.setDisabled(True)
+        self.text.setEnabled(False)
 
         self.title.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.image.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -149,16 +172,6 @@ class Window(QWidget):
         self.setLayout(self.layout)
         self.show()
 
-    def prev_image(self):
-        if self.files:
-            self.index = (self.index - 1) % len(self.files)
-            self.show_image()
-
-    def next_image(self):
-        if self.files:
-            self.index = (self.index + 1) % len(self.files)
-            self.show_image()
-
     def open_folder(self):
         self.folder = QFileDialog.getExistingDirectory(self)
 
@@ -174,15 +187,54 @@ class Window(QWidget):
 
     def caption_image(self):
         if self.file:
-            caption = self.model(self.file)
-            self.text.setText(caption)
-            self.save_caption()
+            self.thread = Thread(self.model, self.file)
+            self.thread.starting.connect(self.starting)
+            self.thread.progress.connect(self.progress)
+            self.thread.finished.connect(self.finished)
+            self.thread.start()
+
+    @pyqtSlot()
+    def starting(self):
+        self.capt_button.setText("hourglass-start")
+        self.prev_button.setEnabled(False)
+        self.open_button.setEnabled(False)
+        self.capt_button.setEnabled(False)
+        self.save_button.setEnabled(False)
+        self.next_button.setEnabled(False)
+        self.text.setEnabled(False)
+
+    @pyqtSlot()
+    def progress(self):
+        self.capt_button.setText("hourglass-half")
+
+    @pyqtSlot(str)
+    def finished(self, caption: str):
+        self.capt_button.setText("eye")
+        self.text.setText(caption)
+        self.save_caption()
+
+        self.prev_button.setEnabled(True)
+        self.open_button.setEnabled(True)
+        self.capt_button.setEnabled(True)
+        self.save_button.setEnabled(True)
+        self.next_button.setEnabled(True)
+        self.text.setEnabled(True)
 
     def save_caption(self):
         if self.file:
             text = self.text.toPlainText().strip()
             path = self.file.parent / f"{self.file.stem}.txt"
             path.write_text(text, encoding="utf-8") if text else path.unlink(True)
+
+    def prev_image(self):
+        if self.files:
+            self.index = (self.index - 1) % len(self.files)
+            self.show_image()
+
+    def next_image(self):
+        if self.files:
+            self.index = (self.index + 1) % len(self.files)
+            self.show_image()
 
     def show_image(self):
         if self.files:
@@ -217,7 +269,7 @@ class Window(QWidget):
             text = path.read_text(encoding="utf-8") if path.exists() else ""
 
             self.text.setPlainText(text)
-            self.text.setDisabled(False)
+            self.text.setEnabled(True)
 
     def resizeEvent(self, event):
         super().resizeEvent(event)

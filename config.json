@@ -1,0 +1,19 @@
+{
+	"model": "microsoft/Florence-2-large-ft",
+	"device": "cuda",
+	"dtype": "float16",
+	"offload": false,
+	"task": "<MORE_DETAILED_CAPTION>",
+	"max_new_tokens": 1024,
+	"num_beams": 3,
+	"extensions": [
+		".avif",
+		".bmp",
+		".jpeg",
+		".jpg",
+		".png",
+		".webp"
+	],
+	"prev": "Ctrl+Shift+A",
+	"next": "Ctrl+Shift+D"
+}

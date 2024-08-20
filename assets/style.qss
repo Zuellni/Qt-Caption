@@ -1,0 +1,57 @@
+* {
+	font: 16px "Varela Round";
+	border: 0;
+	margin: 0;
+	outline: 0;
+	padding: 0;
+	background: #334;
+	color: #AAB;
+}
+
+QLabel {
+	font-size: 20px;
+	border-radius: 8px;
+	margin: 4px;
+	padding: 8px;
+	background: #445;
+}
+
+QTextEdit {
+	border-radius: 8px;
+	margin: 4px;
+	padding: 8px;
+	background: #445;
+	color: #EEF;
+}
+
+QScrollBar {
+	width: 8px;
+}
+
+QScrollBar::up-arrow,
+QScrollBar::down-arrow,
+QScrollBar::add-line,
+QScrollBar::sub-line,
+QScrollBar::add-page,
+QScrollBar::sub-page {
+	background: #445;
+}
+
+QScrollBar::handle {
+	border-radius: 4px;
+	background: #334;
+}
+
+QPushButton {
+	font: 25px "Font Awesome 6 Pro Regular";
+	border-radius: 8px;
+	margin: 4px;
+	padding: 8px;
+	background: #445;
+}
+
+QPushButton:hover {
+	font-family: "Font Awesome 6 Pro Solid";
+	background: #556;
+	color: #EEF;
+}

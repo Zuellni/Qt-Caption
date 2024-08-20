@@ -30,7 +30,7 @@ class Model:
         from transformers import AutoModelForCausalLM, AutoProcessor
 
         if not self.dtype:
-            self.dtype = getattr(torch, self.dtype_str)
+            self.dtype = getattr(torch, self.dtype_str, "float16")
 
         if not self.model:
             self.model = AutoModelForCausalLM.from_pretrained(

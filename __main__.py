@@ -65,7 +65,7 @@ class Model:
 
         output = "\n".join([t for t in output.splitlines() if t])
         output = " ".join(output.split())
-        return output.rsplit(".", 1)[0] + "."
+        return output
 
 
 class Worker(QThread):
@@ -87,16 +87,21 @@ class Window(QWidget):
 
         self.model = model
         self.extensions = config.get(
-            "extensions",
-            (".bmp", ".jpeg", ".jpg", ".png", ".webp"),
+            "extensions", (".bmp", ".jpeg", ".jpg", ".png", ".webp")
         )
 
         self.timer = QTimer()
         self.timer.timeout.connect(self.loading)
-        self.icons = ("hourglass-start", "hourglass-half", "hourglass-end")
-        self.icon_index = 0
-        self.worker = None
 
+        self.cptn_index = 0
+        self.cptn_icons = (
+            "hourglass-start",
+            "hourglass-half",
+            "hourglass-end",
+            "hourglass",
+        )
+
+        self.worker = None
         self.folder = None
         self.files = None
         self.file = None
@@ -119,29 +124,33 @@ class Window(QWidget):
 
         self.prev_button = QPushButton("left")
         self.open_button = QPushButton("folder")
-        self.capt_button = QPushButton("eye")
+        self.cptn_button = QPushButton("eye")
         self.save_button = QPushButton("save")
         self.next_button = QPushButton("right")
 
         self.prev_button.clicked.connect(self.prev_image)
         self.open_button.clicked.connect(self.open_folder)
-        self.capt_button.clicked.connect(self.caption_image)
+        self.cptn_button.clicked.connect(self.caption_image)
         self.save_button.clicked.connect(self.save_caption)
         self.next_button.clicked.connect(self.next_image)
 
         pointer = QCursor(Qt.CursorShape.PointingHandCursor)
         self.prev_button.setCursor(pointer)
         self.open_button.setCursor(pointer)
-        self.capt_button.setCursor(pointer)
+        self.cptn_button.setCursor(pointer)
         self.save_button.setCursor(pointer)
         self.next_button.setCursor(pointer)
 
-        prev_key = config.get("prev", "Ctrl+Shift+A")
-        self.prev_key = QShortcut(QKeySequence(prev_key), self)
+        self.prev_key = config.get("previous", "Ctrl+Shift+A")
+        self.prev_key = QShortcut(QKeySequence(self.prev_key), self)
         self.prev_key.activated.connect(self.prev_image)
 
-        next_key = config.get("next", "Ctrl+Shift+D")
-        self.next_key = QShortcut(QKeySequence(next_key), self)
+        self.cptn_key = config.get("caption", "Ctrl+Shift+S")
+        self.cptn_key = QShortcut(QKeySequence(self.cptn_key), self)
+        self.cptn_key.activated.connect(self.caption_image)
+
+        self.next_key = config.get("next", "Ctrl+Shift+D")
+        self.next_key = QShortcut(QKeySequence(self.next_key), self)
         self.next_key.activated.connect(self.next_image)
 
         self.button_layout = QHBoxLayout()
@@ -149,7 +158,7 @@ class Window(QWidget):
         self.button_layout.setContentsMargins(0, 0, 0, 0)
         self.button_layout.addWidget(self.prev_button, 1)
         self.button_layout.addWidget(self.open_button, 1)
-        self.button_layout.addWidget(self.capt_button, 1)
+        self.button_layout.addWidget(self.cptn_button, 1)
         self.button_layout.addWidget(self.save_button, 1)
         self.button_layout.addWidget(self.next_button, 1)
 
@@ -181,32 +190,31 @@ class Window(QWidget):
         if self.file:
             self.prev_button.setEnabled(False)
             self.open_button.setEnabled(False)
-            self.capt_button.setEnabled(False)
+            self.cptn_button.setEnabled(False)
             self.save_button.setEnabled(False)
             self.next_button.setEnabled(False)
 
-            self.capt_button.setText("hourglass")
+            self.cptn_index = 0
+            self.cptn_button.setText("hourglass")
             self.timer.start(500)
-            self.icon_index = 0
 
             self.worker = Worker(self.model, self.file)
             self.worker.finished.connect(self.finished)
             self.worker.start()
 
     def loading(self):
-        self.capt_button.setText(self.icons[self.icon_index])
-        self.icon_index = (self.icon_index + 1) % len(self.icons)
+        self.cptn_button.setText(self.cptn_icons[self.cptn_index])
+        self.cptn_index = (self.cptn_index + 1) % len(self.cptn_icons)
 
     def finished(self, output: str):
         self.prev_button.setEnabled(True)
         self.open_button.setEnabled(True)
-        self.capt_button.setEnabled(True)
+        self.cptn_button.setEnabled(True)
         self.save_button.setEnabled(True)
         self.next_button.setEnabled(True)
 
-        self.capt_button.setText("eye")
         self.timer.stop()
-
+        self.cptn_button.setText("eye")
         self.text.setText(output)
         self.save_caption()
 
@@ -275,7 +283,7 @@ class Window(QWidget):
 
 if __name__ == "__main__":
     parser = ArgumentParser()
-    parser.add_argument("--config", type=Path, default="config.json")
+    parser.add_argument("-c", "--config", type=Path, default="config.json")
     args = parser.parse_args()
 
     config = (

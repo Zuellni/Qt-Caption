@@ -12,6 +12,7 @@
 		".png",
 		".webp"
 	],
-	"prev": "Ctrl+Shift+A",
+	"previous": "Ctrl+Shift+A",
+	"caption": "Ctrl+Shift+S",
 	"next": "Ctrl+Shift+D"
 }

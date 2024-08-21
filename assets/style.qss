@@ -16,7 +16,7 @@ QLabel {
 	background: #445;
 }
 
-QTextEdit {
+QPlainTextEdit {
 	border-radius: 8px;
 	margin: 4px;
 	padding: 8px;

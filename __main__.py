@@ -115,12 +115,11 @@ class Window(QWidget):
 
         self.title = QLabel("(0/0)")
         self.image = QLabel()
-        self.text = QTextEdit()
+        self.text = QPlainTextEdit()
         self.text.setEnabled(False)
 
         self.title.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.image.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.text.setAlignment(Qt.AlignmentFlag.AlignJustify)
 
         self.prev_button = QPushButton("left")
         self.open_button = QPushButton("folder")
@@ -215,7 +214,7 @@ class Window(QWidget):
 
         self.timer.stop()
         self.cptn_button.setText("eye")
-        self.text.setText(output)
+        self.text.setPlainText(output)
         self.save_caption()
 
     def save_caption(self):

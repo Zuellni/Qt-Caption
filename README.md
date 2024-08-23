@@ -3,29 +3,28 @@ A simple image captioning GUI using [Florence-2](https://huggingface.co/collecti
 
 ## Installation
 Create a new environment with mamba:
-```bat
+```
 mamba create -n qt-caption git python pytorch pytorch-cuda -c conda-forge -c nvidia -c pytorch
 mamba activate qt-caption
 ```
 
 Clone the repository and install requirements:
-```bat
+```
 git clone https://github.com/zuellni/qt-caption
-cd qt-caption
-pip install -r requirements.txt
+pip install -r qt-caption/requirements.txt
 ```
 
 ## Usage
 Start the GUI with:
-```bat
-python . -c config.json
+```
+python qt-caption
 ```
 
 Or with a script like this to hide the console:
 ```bat
 @echo off
 call mamba activate qt-caption
-start pythonw . -c config.json
+start pythonw qt-caption
 ```
 
 ## Preview

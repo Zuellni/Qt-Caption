@@ -281,8 +281,11 @@ class Window(QWidget):
 
 
 if __name__ == "__main__":
+    dir = Path(__file__).parent
+    assets = dir / "assets"
+
     parser = ArgumentParser()
-    parser.add_argument("-c", "--config", type=Path, default="config.json")
+    parser.add_argument("-c", "--config", type=Path, default=dir / "config.json")
     args = parser.parse_args()
 
     config = (
@@ -291,7 +294,6 @@ if __name__ == "__main__":
         else {}
     )
 
-    assets = Path(__file__).parent / "assets"
     style = (assets / "style.qss").read_text(encoding="utf-8")
     icon = (assets / "icon.png").as_posix()
 

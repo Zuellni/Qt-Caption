@@ -4,7 +4,7 @@ A simple image captioning GUI using [Florence-2](https://huggingface.co/collecti
 ## Installation
 Create a new environment with mamba:
 ```bat
-mamba create -n qt-caption git python pytorch pytorch-cuda torchvision -c conda-forge -c nvidia -c pytorch
+mamba create -n qt-caption git python pytorch pytorch-cuda -c conda-forge -c nvidia -c pytorch
 mamba activate qt-caption
 ```
 

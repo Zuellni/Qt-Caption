@@ -1,7 +1,6 @@
 {
 	"model": "microsoft/Florence-2-large-ft",
 	"device": "cuda",
-	"dtype": "float16",
 	"task": "<MORE_DETAILED_CAPTION>",
 	"max_new_tokens": 1024,
 	"num_beams": 3,

@@ -3,6 +3,7 @@ import sys
 from argparse import ArgumentParser
 from pathlib import Path
 
+from PIL import Image
 from PyQt6.QtCore import *
 from PyQt6.QtGui import *
 from PyQt6.QtWidgets import *
@@ -11,8 +12,8 @@ from PyQt6.QtWidgets import *
 class Model:
     def __init__(self, config: dict):
         self.path = config.get("model", "microsoft/Florence-2-large-ft")
-        self.device = config.get("device", "cuda")
-        self.dtype = config.get("dtype", "float16")
+        self.device = config.get("device", "cpu")
+        self.dtype = "float32" if self.device == "cpu" else "float16"
 
         self.task = config.get("task", "<MORE_DETAILED_CAPTION>")
         self.max_new_tokens = config.get("max_new_tokens", 1024)
@@ -23,11 +24,10 @@ class Model:
 
     def __call__(self, path: Path) -> str:
         import torch
-        from torchvision import io
         from transformers import AutoModelForCausalLM, AutoProcessor
 
-        image = io.read_image(path, io.ImageReadMode.RGB)
-        dtype = getattr(torch, self.dtype, "float16")
+        image = Image.open(path).convert("RGB")
+        dtype = getattr(torch, self.dtype)
 
         if not self.model:
             self.model = AutoModelForCausalLM.from_pretrained(
@@ -47,7 +47,7 @@ class Model:
 
         with torch.inference_mode():
             input = self.processor(text=self.task, images=image)
-            input.to(self.device, dtype=dtype)
+            input.to(device=self.device, dtype=dtype)
 
             output_ids = self.model.generate(
                 input_ids=input["input_ids"],

@@ -4,9 +4,9 @@ from argparse import ArgumentParser
 from pathlib import Path
 
 from PIL import Image
-from PyQt6.QtCore import *
-from PyQt6.QtGui import *
-from PyQt6.QtWidgets import *
+from PySide6.QtCore import *
+from PySide6.QtGui import *
+from PySide6.QtWidgets import *
 
 
 class Model:
@@ -69,7 +69,7 @@ class Model:
 
 
 class Worker(QThread):
-    finished = pyqtSignal(str)
+    finished = Signal(str)
 
     def __init__(self, model: Model, path: Path):
         super().__init__()

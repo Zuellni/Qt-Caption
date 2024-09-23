@@ -301,8 +301,8 @@ if __name__ == "__main__":
     app = QApplication([])
     window = Window(model, config, icon)
 
-    for font in [f for f in assets.glob("*.*") if f.suffix in (".otf, .ttf")]:
-        QFontDatabase.addApplicationFont(font.as_posix())
+    QFontDatabase.addApplicationFont((assets / "main.ttf").as_posix())
+    QFontDatabase.addApplicationFont((assets / "icon.otf").as_posix())
 
     app.setStyleSheet(style)
     sys.exit(app.exec())

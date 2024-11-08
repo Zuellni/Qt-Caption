@@ -4,6 +4,7 @@
 	"task": "<MORE_DETAILED_CAPTION>",
 	"max_new_tokens": 1024,
 	"num_beams": 3,
+	"repetition_penalty": 1.0,
 	"extensions": [
 		".bmp",
 		".jpeg",

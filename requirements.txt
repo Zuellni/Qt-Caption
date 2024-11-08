@@ -1,4 +1,8 @@
+accelerate
+einops
 pillow
 pyside6
+timm
 torch
+torchvision
 transformers

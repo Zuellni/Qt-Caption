@@ -18,6 +18,7 @@ class Model:
         self.task = config.get("task", "<MORE_DETAILED_CAPTION>")
         self.max_new_tokens = config.get("max_new_tokens", 1024)
         self.num_beams = config.get("num_beams", 3)
+        self.repetition_penalty = config.get("repetition_penalty", 1.0)
 
         self.model = None
         self.processor = None
@@ -56,6 +57,7 @@ class Model:
                 early_stopping=False,
                 max_new_tokens=self.max_new_tokens,
                 num_beams=self.num_beams,
+                repetition_penalty=self.repetition_penalty,
             )
 
             output = self.processor.decode(
